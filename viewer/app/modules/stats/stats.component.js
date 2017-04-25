@@ -25,8 +25,9 @@
     /* Callback when component is mounted and ready */
     $onInit() {
       var self = this;
-      this.graphSelect      = 'deltaPacketsPerSec';
-      this.graphTimeSelect  = '5';
+      this.graphSelect          = 'deltaPacketsPerSec';
+      this.graphTimeSelect      = '5';
+      this.updateIntervalSelect = '5000';
 
 
       this.UserService.getSettings()

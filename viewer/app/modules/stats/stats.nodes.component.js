@@ -2,6 +2,8 @@
 
   'use strict';
 
+  let interval;
+
   /**
    * @class StatsNodesController
    * @classdesc Interacts with moloch stats page
@@ -16,8 +18,9 @@
      *
      * @ngInject
      */
-    constructor($scope, StatsService, UserService) {
+    constructor($scope, $interval, StatsService, UserService) {
       this.$scope         = $scope;
+      this.$interval      = $interval;
       this.StatsService   = StatsService;
       this.UserService    = UserService;
     }
@@ -61,7 +64,14 @@
       ];
 
       this.loadData();
-      setInterval(this.loadData.bind(this), 5000);
+      interval = this.$interval(this.loadData.bind(this), parseInt(this.updateInterval));
+    }
+
+    $onChanges(changesObj) {
+      if (changesObj.updateInterval && interval) {
+        this.$interval.cancel(interval);
+        interval = this.$interval(this.loadData.bind(this), parseInt(this.updateInterval));
+      }
     }
 
     columnClick(name) {
@@ -159,7 +169,7 @@
     }
   }
 
-  StatsNodesController.$inject = ['$scope', 'StatsService', 'UserService'];
+  StatsNodesController.$inject = ['$scope','$interval','StatsService','UserService'];
 
   /**
    * Moloch StatsNodes Directive
@@ -169,7 +179,7 @@
      .component('molochNodesStats', {
        template  : require('html!./stats.nodes.html'),
        controller: StatsNodesController,
-       bindings   : { colors: '&' }
+       bindings   : { colors: '&', updateInterval: '<' }
      });
 
 })();
