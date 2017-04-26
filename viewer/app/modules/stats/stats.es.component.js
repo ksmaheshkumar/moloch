@@ -29,21 +29,10 @@
     $onInit() {
       this.sortField    = 'nodeName';
       this.sortReverse  = false;
-      this.query        = {length: 50, start: 0};
-      this.currentPage  = 1;
-
-      this.$scope.$on('change:pagination', (event, args) => {
-        // pagination affects length, currentPage, and start
-        this.query.length = args.length;
-        this.query.start  = args.start;
-        this.currentPage  = args.currentPage;
-
-        this.loadData();
-      });
 
       this.UserService.getSettings()
-        .then((response) => {this.settings = response; })
-        .catch((error)   => {this.settings = {timezone: "local"}; });
+        .then((response) => { this.settings = response; })
+        .catch((error)   => { this.settings = { timezone:'local' }; });
 
       this.columns = [
         { name: 'Name', sort: 'name', doStats: false },
@@ -64,20 +53,27 @@
     $onChanges(changesObj) {
       if (changesObj.updateInterval && interval) {
         this.$interval.cancel(interval);
-        interval = undefined;
+
+        if (this.updateInterval === '0') { return; }
+
         interval = this.$interval(this.loadData.bind(this), parseInt(this.updateInterval));
       }
     }
 
+    $onDestroy() {
+      this.$interval.cancel(interval);
+      interval = null;
+    }
+
     columnClick(name) {
-      this.sortField=name; 
+      this.sortField = name;
       this.sortReverse = !this.sortReverse;
       this.loadData();
     }
 
     loadData() {
-      this.StatsService.getElasticsearchStats({filter: this.searchStats, sortField: this.sortField, desc: this.sortReverse, start: this.query.start, length:this.query.length})
-        .then((response)  => { 
+      this.StatsService.getElasticsearchStats({filter: this.searchStats, sortField: this.sortField, desc: this.sortReverse})
+        .then((response) => {
           this.stats = response; 
 
           this.averageValues = {};
@@ -96,9 +92,13 @@
             this.averageValues[columnName] = this.totalValues[columnName]/stats.length;
           }
         })
-        .catch((error)    => { this.error = error; });
+        .catch((error) => {
+          this.error = error;
+        });
     }
   }
+
+
 
   StatsESController.$inject = ['$scope','$interval','StatsService','UserService'];
 

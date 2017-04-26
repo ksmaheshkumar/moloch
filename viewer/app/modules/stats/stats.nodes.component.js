@@ -18,9 +18,10 @@
      *
      * @ngInject
      */
-    constructor($scope, $interval, StatsService, UserService) {
+    constructor($scope, $interval, $routeParams, StatsService, UserService) {
       this.$scope         = $scope;
       this.$interval      = $interval;
+      this.$routeParams   = $routeParams;
       this.StatsService   = StatsService;
       this.UserService    = UserService;
     }
@@ -29,9 +30,13 @@
     $onInit() {
       this.sortField    = 'nodeName';
       this.sortReverse  = false;
-      this.query        = {length: 50, start: 0};
+      this.query        = { length:10, start:0 };
       this.expanded     = {};
       this.currentPage  = 1;
+
+      if (this.$routeParams.length) {
+        this.query.length = this.$routeParams.length;
+      }
 
       this.$scope.$on('change:pagination', (event, args) => {
         // pagination affects length, currentPage, and start
@@ -70,13 +75,21 @@
     $onChanges(changesObj) {
       if (changesObj.updateInterval && interval) {
         this.$interval.cancel(interval);
+
+        if (this.updateInterval === '0') { return; }
+
         interval = this.$interval(this.loadData.bind(this), parseInt(this.updateInterval));
       }
     }
 
+    $onDestroy() {
+      this.$interval.cancel(interval);
+      interval = null;
+    }
+
     columnClick(name) {
-      this.sortField=name;
-      this.sortReverse = !this.sortReverse;
+      this.sortField    = name;
+      this.sortReverse  = !this.sortReverse;
       this.loadData();
     }
 
@@ -105,6 +118,7 @@
         })
         .catch((error)    => { this.error = error; });
     }
+
     toggleStatDetail(stat) {
       var self = this;
       let id   = stat.id.replace(/[.:]/g, '\\$&');
@@ -169,7 +183,8 @@
     }
   }
 
-  StatsNodesController.$inject = ['$scope','$interval','StatsService','UserService'];
+  StatsNodesController.$inject = ['$scope','$interval','$routeParams',
+    'StatsService','UserService'];
 
   /**
    * Moloch StatsNodes Directive

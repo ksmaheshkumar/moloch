@@ -1,6 +1,24 @@
-moloch-stats #statsGraph {
-  margin-bottom: 5px;
-  margin-top: 80px;
+moloch-stats .container-fluid {
+  margin-top: 90px;
+}
+
+moloch-stats .panel-heading {
+  padding         : 0;
+  background-color: var(--color-gray-light) !important;
+}
+
+moloch-stats .panel-title a.accordion-toggle {
+  display         : block;
+  padding         : 10px 15px;
+  text-decoration : none;
+}
+moloch-stats .panel-body {
+  padding: 0;
+  overflow:hidden;
+}
+moloch-stats .well {
+  /*margin-bottom: 0;*/
+  margin: -2px;
 }
 
 moloch-stats #statsGraphOptions {
