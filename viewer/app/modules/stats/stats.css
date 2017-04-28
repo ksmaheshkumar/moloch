@@ -16,10 +16,6 @@ moloch-stats .panel-body {
   padding: 0;
   overflow:hidden;
 }
-moloch-stats .well {
-  /*margin-bottom: 0;*/
-  margin: -2px;
-}
 
 moloch-stats #statsGraphOptions {
   position  : relative;
@@ -43,7 +39,7 @@ moloch-stats form.stats-form {
   top     : 36px;
   left    : 0;
   right   : 0;
-  z-index : 1;
+  z-index : 4;
   padding : var(--px-xlg) var(--px-lg) var(--px-md) var(--px-lg);
   background-color: var(--color-quaternary-lightest);
 

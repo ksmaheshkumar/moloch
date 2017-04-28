@@ -8,10 +8,12 @@
       <!-- graph type select -->
       <div class="form-group margined-bottom">
         <div class="input-group input-group-sm">
-          <span class="input-group-addon">
+          <span class="input-group-addon help-cursor"
+            uib-tooltip="The type of graph data to display"
+            tooltip-placement="bottom-left">
             Graph Type
           </span>
-          <select ng-model="$ctrl.graphSelect" ng-change="$ctrl.loadData()"
+          <select ng-model="$ctrl.graphType" ng-change="$ctrl.changeGraphType()"
             class="form-control input-sm">
             <option value="deltaPacketsPerSec">Packets/Sec</option>
             <option value="deltaBytesPerSec">Bytes/Sec</option>
@@ -45,10 +47,12 @@
       <!-- graph interval select -->
       <div class="form-group margined-bottom">
         <div class="input-group input-group-sm">
-          <span class="input-group-addon">
+          <span class="input-group-addon help-cursor"
+            uib-tooltip="Graph data bins and graph data refresh interval"
+            tooltip-placement="bottom">
             Graph Interval
           </span>
-          <select ng-model="$ctrl.graphTimeSelect" ng-change="$ctrl.loadData()"
+          <select ng-model="$ctrl.graphInterval" ng-change="$ctrl.changeGraphInterval()"
             class="form-control input-sm">
             <option value="5">Seconds</option>
             <option value="60">Minutes</option>
@@ -61,10 +65,12 @@
       <!-- graph interval select -->
       <div class="form-group margined-bottom">
         <div class="input-group input-group-sm">
-          <span class="input-group-addon">
+          <span class="input-group-addon help-cursor"
+            uib-tooltip="Data refresh interval for Node and Elasticsearch stats"
+            tooltip-placement="bottom">
             Refresh Node/ES Data Every
           </span>
-          <select ng-model="$ctrl.updateIntervalSelect" ng-change="$ctrl.changeInterval()"
+          <select ng-model="$ctrl.dataInterval" ng-change="$ctrl.changeDataInterval()"
             class="form-control input-sm">
             <option value="5000">5 seconds</option>
             <option value="15000">15 seconds</option>
@@ -101,8 +107,8 @@
                   <span class="fa fa-search"></span>
                 </span>
                 <input type="text" class="form-control" ng-model="$ctrl.query.filter"
-                  ng-model-options="{debounce:300}" ng-change="$ctrl.loadData()"
-                  placeholder="Search for nodes by name">
+                  ng-model-options="{debounce:400}" ng-change="$ctrl.searchForNodes()"
+                  placeholder="Begin typing to search for nodes by name">
               </div>
             </div>
           </div>
@@ -111,7 +117,7 @@
           <div uib-accordion-group class="panel-default"
             is-open="$ctrl.graphsOpen">
             <uib-accordion-heading>
-              <div ng-click="$ctrl.toggleGraphs()">
+              <div ng-click="$ctrl.toggleGraphSection()">
                 Graphs
                 <span class="pull-right fa"
                   ng-class="{'fa-minus':$ctrl.graphsOpen, 'fa-plus':!$ctrl.graphsOpen}"></span>
@@ -129,98 +135,95 @@
                 ng-class="{'fa-minus':$ctrl.nodeStatsOpen, 'fa-plus':!$ctrl.nodeStatsOpen}"></span>
             </uib-accordion-heading>
 
-            <div class="well well-sm">
+            <table class="table table-condensed margined-top-xxxlg text-right"
+              ng-if="$ctrl.nodeStatsOpen">
+              <thead class="small">
+              <tr>
+                <th ng-repeat="column in ::$ctrl.columns" class="cursor-pointer text-right"
+                  ng-click="$ctrl.columnClick(column.sort)">
+                  {{::column.name}}
+                  <span ng-if="column.sort !== undefined">
+                    <span ng-show="$ctrl.query.sortField === column.sort && !$ctrl.query.desc" class="fa fa-sort-asc"></span>
+                    <span ng-show="$ctrl.query.sortField === column.sort && $ctrl.query.desc" class="fa fa-sort-desc"></span>
+                    <span ng-show="$ctrl.query.sortField !== column.sort" class="fa fa-sort"></span>
+                  </span>
+                </th>
+              </tr>
+              </thead>
+              <tbody>
+              <tbody>
+              <tr class="animate-repeat" ng-if="$ctrl.stats.data"
+                ng-repeat-start="stat in $ctrl.stats.data track by stat.id">
+                <td class="no-wrap">
+                  <a class="btn btn-sm btn-toggle"
+                    ng-class="{'collapsed':!$ctrl.expandedNodeStats[stat.id], 'btn-theme-tertiary':!$ctrl.expandedNodeStats[stat.id], 'btn-danger':$ctrl.expandedNodeStats[stat.id]}"
+                    ng-click="$ctrl.toggleStatDetail(stat)">
+                    <span class="fa fa-close"></span>
+                  </a>
+                </td>
+                <td class="no-wrap">{{stat.id}}</td>
+                <td class="no-wrap">{{stat.currentTime | timezoneDateString:$ctrl.settings.timezone}}</td>
+                <td class="no-wrap">{{stat.monitoring|number:0}}</td>
+                <td class="no-wrap">{{stat.freeSpaceM*1000000|humanReadable}} ({{stat.freeSpaceP|number:1}}%)</td>
+                <td class="no-wrap">{{stat.cpu/100.0|number:1}}%</td>
+                <td class="no-wrap">{{stat.memory|humanReadable}} ({{stat.memoryP|number:1}}%)</td>
+                <td class="no-wrap">{{stat.packetQueue|number:0}}</td>
+                <td class="no-wrap">{{stat.deltaPacketsPerSec|number:0}}</td>
+                <td class="no-wrap">{{stat.deltaBytesPerSec|number:0}}</td>
+                <td class="no-wrap">{{stat.deltaSessionsPerSec|number:0}}</td>
+                <td class="no-wrap">{{stat.deltaDroppedPerSec|number:0}}</td>
+                <td class="no-wrap">{{stat.deltaOverloadDroppedPerSec|number:0}}</td>
+                <td class="no-wrap">{{stat.deltaESDroppedPerSec|number:0}}</td>
+              </tr>
+              <tr ng-repeat-end ng-show="$ctrl.expandedNodeStats[stat.id]">
+                <td colspan="{{::$ctrl.columns.length}}">
+                  <div id="statsGraph-{{stat.id}}">
+                  </div>
+                </td>
+              </tr>
+              <tr ng-if="!$ctrl.stats.data.length">
+                <td colspan="{{::$ctrl.columns.length}}" class="text-danger">
+                  <span class="fa fa-warning"></span>&nbsp;
+                  No results match your search
+                </td>
+              </tr>
+              </tbody>
+              <tfoot class="bold" ng-if="$ctrl.averageValues && $ctrl.totalValues">
+              <tr>
+                <td class="no-wrap"></td>
+                <td class="no-wrap">Average</td>
+                <td class="no-wrap"></td>
+                <td class="no-wrap">{{$ctrl.averageValues.monitoring|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.averageValues.freeSpaceM*1000000|humanReadable}} ({{$ctrl.averageValues.freeSpaceP|number:1}}%)</td>
+                <td class="no-wrap">{{$ctrl.averageValues.cpu/100.0|number:1}}%</td>
+                <td class="no-wrap">{{$ctrl.averageValues.memory|humanReadable}} ({{$ctrl.averageValues.memoryP|number:1}}%)</td>
+                <td class="no-wrap">{{$ctrl.averageValues.packetQueue|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.averageValues.deltaPacketsPerSec|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.averageValues.deltaBytesPerSec|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.averageValues.deltaSessionsPerSec|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.averageValues.deltaDroppedPerSec|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.averageValues.deltaOverloadDroppedPerSec|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.averageValues.deltaESDroppedPerSec|number:0}}</td>
+              </tr>
+              <tr>
+                <td class="no-wrap"></td>
+                <td class="no-wrap">Total</td>
+                <td class="no-wrap"></td>
+                <td class="no-wrap">{{$ctrl.totalValues.monitoring|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.totalValues.freeSpaceM*1000000|humanReadable}} ({{$ctrl.totalValues.freeSpaceP|number:1}}%)</td>
+                <td class="no-wrap">{{$ctrl.totalValues.cpu/100.0|number:1}}%</td>
+                <td class="no-wrap">{{$ctrl.totalValues.memory|humanReadable}} ({{$ctrl.totalValues.memoryP|number:1}}%)</td>
+                <td class="no-wrap">{{$ctrl.totalValues.packetQueue|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.totalValues.deltaPacketsPerSec|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.totalValues.deltaBytesPerSec|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.totalValues.deltaSessionsPerSec|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.totalValues.deltaDroppedPerSec|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.totalValues.deltaOverloadDroppedPerSec|number:0}}</td>
+                <td class="no-wrap">{{$ctrl.totalValues.deltaESDroppedPerSec|number:0}}</td>
+              </tr>
+              </tfoot>
+            </table>
 
-              <table class="table table-condensed margined-top-xxxlg text-right"
-                ng-if="$ctrl.nodeStatsOpen">
-                <thead class="small">
-                <tr>
-                  <th ng-repeat="column in ::$ctrl.columns" class="cursor-pointer text-right"
-                    ng-click="$ctrl.columnClick(column.sort)">
-                    {{::column.name}}
-                    <span ng-if="column.sort !== undefined">
-                      <span ng-show="$ctrl.query.sortField === column.sort && !$ctrl.query.desc" class="fa fa-sort-asc"></span>
-                      <span ng-show="$ctrl.query.sortField === column.sort && $ctrl.query.desc" class="fa fa-sort-desc"></span>
-                      <span ng-show="$ctrl.query.sortField !== column.sort" class="fa fa-sort"></span>
-                    </span>
-                  </th>
-                </tr>
-                </thead>
-                <tbody>
-                <tbody>
-                <tr class="animate-repeat" ng-if="$ctrl.stats.data"
-                  ng-repeat-start="stat in $ctrl.stats.data track by stat.id">
-                  <td class="no-wrap">
-                    <a class="btn btn-sm btn-toggle"
-                      ng-class="{'collapsed':!$ctrl.expanded[stat.id], 'btn-theme-tertiary':!$ctrl.expanded[stat.id], 'btn-danger':$ctrl.expanded[stat.id]}"
-                      ng-click="$ctrl.toggleStatDetail(stat)">
-                      <span class="fa fa-close"></span>
-                    </a>
-                  </td>
-                  <td class="no-wrap">{{stat.id}}</td>
-                  <td class="no-wrap">{{stat.currentTime | timezoneDateString:$ctrl.settings.timezone}}</td>
-                  <td class="no-wrap">{{stat.monitoring|number:0}}</td>
-                  <td class="no-wrap">{{stat.freeSpaceM*1000000|humanReadable}} ({{stat.freeSpaceP|number:1}}%)</td>
-                  <td class="no-wrap">{{stat.cpu/100.0|number:1}}%</td>
-                  <td class="no-wrap">{{stat.memory|humanReadable}} ({{stat.memoryP|number:1}}%)</td>
-                  <td class="no-wrap">{{stat.packetQueue|number:0}}</td>
-                  <td class="no-wrap">{{stat.deltaPacketsPerSec|number:0}}</td>
-                  <td class="no-wrap">{{stat.deltaBytesPerSec|number:0}}</td>
-                  <td class="no-wrap">{{stat.deltaSessionsPerSec|number:0}}</td>
-                  <td class="no-wrap">{{stat.deltaDroppedPerSec|number:0}}</td>
-                  <td class="no-wrap">{{stat.deltaOverloadDroppedPerSec|number:0}}</td>
-                  <td class="no-wrap">{{stat.deltaESDroppedPerSec|number:0}}</td>
-                </tr>
-                <tr ng-repeat-end ng-show="$ctrl.expanded[stat.id]">
-                  <td colspan="{{::$ctrl.columns.length}}">
-                    <div id="statsGraph-{{stat.id}}">
-                    </div>
-                  </td>
-                </tr>
-                <tr ng-if="!$ctrl.stats.data.length">
-                  <td colspan="{{::$ctrl.columns.length}}" class="text-danger">
-                    <span class="fa fa-warning"></span>&nbsp;
-                    No results match your search
-                  </td>
-                </tr>
-                </tbody>
-                <tfoot class="bold" ng-if="$ctrl.averageValues && $ctrl.totalValues">
-                <tr>
-                  <td class="no-wrap"></td>
-                  <td class="no-wrap">Average</td>
-                  <td class="no-wrap"></td>
-                  <td class="no-wrap">{{$ctrl.averageValues.monitoring|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.averageValues.freeSpaceM*1000000|humanReadable}} ({{$ctrl.averageValues.freeSpaceP|number:1}}%)</td>
-                  <td class="no-wrap">{{$ctrl.averageValues.cpu/100.0|number:1}}%</td>
-                  <td class="no-wrap">{{$ctrl.averageValues.memory|humanReadable}} ({{$ctrl.averageValues.memoryP|number:1}}%)</td>
-                  <td class="no-wrap">{{$ctrl.averageValues.packetQueue|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.averageValues.deltaPacketsPerSec|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.averageValues.deltaBytesPerSec|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.averageValues.deltaSessionsPerSec|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.averageValues.deltaDroppedPerSec|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.averageValues.deltaOverloadDroppedPerSec|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.averageValues.deltaESDroppedPerSec|number:0}}</td>
-                </tr>
-                <tr>
-                  <td class="no-wrap"></td>
-                  <td class="no-wrap">Total</td>
-                  <td class="no-wrap"></td>
-                  <td class="no-wrap">{{$ctrl.totalValues.monitoring|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.totalValues.freeSpaceM*1000000|humanReadable}} ({{$ctrl.totalValues.freeSpaceP|number:1}}%)</td>
-                  <td class="no-wrap">{{$ctrl.totalValues.cpu/100.0|number:1}}%</td>
-                  <td class="no-wrap">{{$ctrl.totalValues.memory|humanReadable}} ({{$ctrl.totalValues.memoryP|number:1}}%)</td>
-                  <td class="no-wrap">{{$ctrl.totalValues.packetQueue|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.totalValues.deltaPacketsPerSec|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.totalValues.deltaBytesPerSec|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.totalValues.deltaSessionsPerSec|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.totalValues.deltaDroppedPerSec|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.totalValues.deltaOverloadDroppedPerSec|number:0}}</td>
-                  <td class="no-wrap">{{$ctrl.totalValues.deltaESDroppedPerSec|number:0}}</td>
-                </tr>
-                </tfoot>
-              </table>
-
-            </div>
           </div>  <!-- /node stats table -->
 
         </uib-accordion>
@@ -230,7 +233,7 @@
       <uib-tab index="1" heading="Elasticsearch" select="$ctrl.selectTab(1)">
 
         <moloch-es-stats ng-if="$ctrl.selectedTab === 1"
-          update-interval="$ctrl.updateIntervalSelect">
+          update-interval="$ctrl.dataInterval">
         </moloch-es-stats>
 
       </uib-tab>

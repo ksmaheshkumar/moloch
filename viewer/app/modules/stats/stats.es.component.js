@@ -2,18 +2,20 @@
 
   'use strict';
 
-  let interval;
+  let reqPromise; // promise returned from $interval for recurring requests
 
   /**
    * @class StatsESController
-   * @classdesc Interacts with moloch stats page
+   * @classdesc Interacts with moloch es stats section
    * @example
-   * '<moloch-fields></moloch-fields>'
+   * '<moloch-es-stats update-interval="$ctrl.dataInterval"></moloch-es-stats>'
    */
   class StatsESController {
 
     /**
      * Initialize global variables for this controller
+     * @param $scope        Angular application model object
+     * @param $interval     Angular's wrapper for window.setInterval
      * @param StatsService  Transacts stats with the server
      *
      * @ngInject
@@ -47,30 +49,45 @@
       ];
 
       this.loadData();
-      interval = this.$interval(this.loadData.bind(this), parseInt(this.updateInterval));
-    }
-
-    $onChanges(changesObj) {
-      if (changesObj.updateInterval && interval) {
-        this.$interval.cancel(interval);
-
-        if (this.updateInterval === '0') { return; }
-
-        interval = this.$interval(this.loadData.bind(this), parseInt(this.updateInterval));
+      if (this.updateInterval !== '0') {
+        reqPromise = this.$interval(this.loadData.bind(this), parseInt(this.updateInterval));
       }
     }
 
-    $onDestroy() {
-      this.$interval.cancel(interval);
-      interval = null;
+    /**
+     * fired whenever one-way bindings are updated
+     * @param {obj} changesObj Hash whose keys are the names of the bound
+     *                         properties that have changed, and the values
+     *                         are an object of the form
+     */
+    $onChanges(changesObj) {
+      if (changesObj.updateInterval && reqPromise) {
+        this.$interval.cancel(reqPromise);
+
+        if (this.updateInterval === '0') { return; }
+
+        reqPromise = this.$interval(this.loadData.bind(this), parseInt(this.updateInterval));
+      }
     }
 
+    /* fired when controller's containing scope is destroyed */
+    $onDestroy() {
+      this.$interval.cancel(reqPromise);
+      reqPromise = null;
+    }
+
+    /**
+     * Loads data with sort parameter
+     * Fired when a column is clicked
+     * @param {string} name The name of the column
+     */
     columnClick(name) {
       this.sortField = name;
       this.sortReverse = !this.sortReverse;
       this.loadData();
     }
 
+    /* loads the es stats data and computes the total and average values */
     loadData() {
       this.StatsService.getElasticsearchStats({filter: this.searchStats, sortField: this.sortField, desc: this.sortReverse})
         .then((response) => {
@@ -99,12 +116,11 @@
   }
 
 
-
   StatsESController.$inject = ['$scope','$interval','StatsService','UserService'];
 
   /**
    * Moloch StatsES Directive
-   * Displays pcap stats
+   * Displays ES stats
    */
   angular.module('moloch')
      .component('molochEsStats', {

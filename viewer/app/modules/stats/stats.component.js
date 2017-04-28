@@ -2,25 +2,33 @@
 
   'use strict';
 
-  let interval, graphInitialized;
+
+  let reqPromise;   // promise returned from $interval for recurring requests
+  let initialized;  // whether the graph has been initialized
 
   /**
    * @class StatsController
    * @classdesc Interacts with moloch stats page
    * @example
-   * '<moloch-fields></moloch-fields>'
+   * '<moloch-stats></moloch-stats>'
    */
   class StatsController {
 
     /**
      * Initialize global variables for this controller
+     * @param $scope        Angular application model object
+     * @param $interval     Angular's wrapper for window.setInterval
+     * @param $location     Exposes browser address bar URL (based on the window.location)
+     * @param $routeParams  Retrieve the current set of route parameters
      * @param StatsService  Transacts stats with the server
+     * @param UserService   Transacts users and user data with the server
      *
      * @ngInject
      */
-    constructor($scope, $interval, $routeParams, StatsService, UserService) {
+    constructor($scope, $interval, $location, $routeParams, StatsService, UserService) {
       this.$scope         = $scope;
       this.$interval      = $interval;
+      this.$location      = $location;
       this.$routeParams   = $routeParams;
       this.StatsService   = StatsService;
       this.UserService    = UserService;
@@ -32,34 +40,26 @@
 
       this.currentPage = 1; // always start on first page
 
-      this.query = {        // default query params
-        length    : 10,
+      this.query = {
+        length    : this.$routeParams.length || 10,
         start     : 0,
         filter    : null,
         sortField : 'nodeName',
         desc      : false
       };
 
-      if (this.$routeParams.length) { // update length param if in url
-        this.query.length = this.$routeParams.length;
-      }
-
-      this.expanded = {};
-
-      this.graphSelect          = 'deltaPacketsPerSec';
-      this.graphTimeSelect      = '5';
-      this.updateIntervalSelect = '5000';
-
-      // all sections are open to start
+      this.graphType      = this.$routeParams.type || 'deltaPacketsPerSec';
+      this.graphInterval  = this.$routeParams.gtime || '5';
+      this.dataInterval   = this.$routeParams.interval ||'5000';
       this.graphsOpen     = true;
       this.nodeStatsOpen  = true;
-      this.esStatsOpen    = true;
-
       this.selectedTab    = 0; // select the first tab
 
+      this.expandedNodeStats = {};
+
       this.UserService.getSettings()
-        .then((response) => {this.settings = response; })
-        .catch((error)   => {this.settings = { timezone:'local' }; });
+        .then((response) => { this.settings = response; })
+        .catch((error)   => { this.settings = { timezone:'local' }; });
 
       // build colors array from css variables
       let styles = window.getComputedStyle(document.body);
@@ -74,7 +74,7 @@
       this.colors = [primaryDark, primary, primaryLight, primaryLighter,
                      secondaryLighter, secondaryLight, secondary, secondaryDark];
 
-      this.columns = [
+      this.columns = [ // node stats table columns
         { name: '', doStats: false},
         { name: 'Node', sort: 'nodeName', doStats: false },
         { name: 'Time', sort: 'currentTime', doStats: true },
@@ -92,7 +92,13 @@
       ];
 
       this.loadData();
-      interval = this.$interval(() => { this.loadData(); }, parseInt(this.updateIntervalSelect));
+
+      // set a recurring server req if necessary
+      if (this.dataInterval !== '0') {
+        reqPromise = this.$interval(() => {
+          this.loadData();
+        }, parseInt(this.dataInterval));
+      }
 
       this.$scope.$on('change:pagination', (event, args) => {
         // pagination affects length, currentPage, and start
@@ -100,6 +106,7 @@
         this.query.start  = args.start;
         this.currentPage  = args.currentPage;
 
+        initialized = false;
         this.loadData();
       });
 
@@ -116,68 +123,111 @@
         document.addEventListener('visibilitychange', () => {
           if (!this.context) { return; }
           if (document.hidden) { this.context.stop(); }
-          else if (this.graphTimeSelect !== '0' && this.graphsOpen) {
+          else if (this.graphInterval !== '0' && this.graphsOpen && this.selectedTab === 0) {
             this.context.start();
           }
         });
       }
     }
 
+    /* fired when controller's containing scope is destroyed */
     $onDestroy() {
-      this.$interval.cancel(interval);
-      interval = null;
+      this.$interval.cancel(reqPromise);
+      reqPromise = null;
     }
 
-    changeInterval() {
-      if (interval) {
-        this.$interval.cancel(interval);
+    /* exposed methods ----------------------------------------------------- */
+    /* fired when select input is changed for data interval */
+    changeDataInterval() {
+      // update url param
+      this.$location.search('interval', this.dataInterval);
 
-        if (this.updateInterval === '0') { return; }
+      if (reqPromise) { // cancel the interval and reset it if necessary
+        this.$interval.cancel(reqPromise);
 
-        interval = this.$interval(() => { this.loadData(); }, parseInt(this.updateIntervalSelect));
+        if (this.dataInterval === '0') { return; }
+
+        reqPromise = this.$interval(() => {
+          this.loadData();
+        }, parseInt(this.dataInterval));
       }
     }
 
-    columnClick(name) {
-      this.sortField    = name;
-      this.sortReverse  = !this.sortReverse;
+    /* fired when select input is changed for graph interval */
+    changeGraphInterval() {
+      // update url param
+      this.$location.search('gtime', this.graphInterval);
+
+      // reinitialize the graph with new graphInterval value
+      initialized = false;
       this.loadData();
     }
 
-    toggleGraphs() {
-      if (!this.context) { return; }
+    /* fired when select input is changed for graph type */
+    changeGraphType() {
+      this.$location.search('type', this.graphType);
 
-      if (this.graphsOpen) { this.context.stop(); }
-      else if (this.graphTimeSelect !== '0') { this.context.start(); }
+      initialized = false;
+      this.loadData();
     }
 
+    /**
+     * Loads data with sort parameter
+     * Fired when a column is clicked
+     * @param {string} name The name of the column
+     */
+    columnClick(name) {
+      this.query.sortField = name;
+      this.query.desc = !this.query.desc;
+      this.loadData();
+    }
+
+    /* fired when graph section is opened/closed */
+    toggleGraphSection() {
+      if (!this.context) { return; }
+
+      // if it was open, it will be closing, so stop the graph from updating
+      if (this.graphsOpen) { this.context.stop(); }
+      // otherwise, if the graph interval isn't none, start the graph
+      else if (this.graphInterval !== '0') { this.context.start(); }
+    }
+
+    /**
+     * Starts/stops loading of graphs/nodes/es data based on tab
+     * Fired when a tab is selected
+     * @param index
+     */
     selectTab(index) {
       this.selectedTab = index;
 
-      if (index !== 0) {
-        this.$interval.cancel(interval);
-        interval = null;
-
+      if (index !== 0) { // not on the nodes tab
+        this.$interval.cancel(reqPromise); // cancel the node req interval
+        reqPromise = null;
+        // stop the graph from loading data
         if (this.context) { this.context.stop(); }
-      } else if (index === 0) {
-        graphInitialized = false;
+      } else if (index === 0 && initialized) {
+        // on the nodes tab and the graph has already been initialized
+        initialized = false; // reinitialize the graph
         this.loadData();
-        // if (this.context && this.graphsOpen) { this.context.start(); }
-        if (this.updateInterval !== '0') {
-          interval = this.$interval(() => { this.loadData(); }, parseInt(this.updateIntervalSelect));
+
+        if (this.dataInterval !== '0') { // set up the node req interval
+          reqPromise = this.$interval(() => {
+            this.loadData();
+          }, parseInt(this.dataInterval));
         }
       }
     }
 
+    /* fired when node search input is changed */
+    searchForNodes() {
+      // reinitalize the graph
+      initialized = false;
+      this.loadData();
+    }
+
+    /* loads the node stats data, computes the total and average values
+     * and initializes the graph if necessary */
     loadData() {
-      if (this.graphTimeSelect === '0') {
-        if (!this.context) { return; }
-        this.context.stop();
-        return;
-      }
-
-      this.loading = true;
-
       this.StatsService.getMolochStats(this.query)
         .then((response) => {
           this.loading  = false;
@@ -201,9 +251,14 @@
             this.averageValues[columnName] = this.totalValues[columnName]/stats.length;
           }
 
-          if (this.stats.data && !graphInitialized) {
-            graphInitialized = true; // only make the graph once when page loads
-            this.makeStatsGraph(this.graphSelect, parseInt(this.graphTimeSelect, 10));
+          if (this.stats.data && !initialized && this.graphsOpen) {
+            initialized = true; // only make the graph when page loads or tab switched to 0
+            if (this.graphInterval === '0') {
+              this.makeStatsGraph(this.graphType, 5);
+              this.context.stop();
+            } else {
+              this.makeStatsGraph(this.graphType, parseInt(this.graphInterval, 10));
+            }
           }
         })
         .catch((error) => {
@@ -216,6 +271,7 @@
      * Creates a cubism graph of time series data for a specific metric
      * https://github.com/square/cubism/wiki/Metric
      * @param {string} metricName the name of the metric to visualize data for
+     * @param {int} interval      the data grouping and request interval
      */
     makeStatsGraph(metricName, interval) {
       var self = this;
@@ -268,15 +324,19 @@
       });
     }
 
+    /**
+     * Opens/closes a stat in the node stats table to display cubism graphs
+     * @param {obj} stat the stat row to toggle
+     */
     toggleStatDetail(stat) {
       var self = this;
       let id   = stat.id.replace(/[.:]/g, '\\$&');
 
-      this.expanded[id] = !this.expanded[id];
+      this.expandedNodeStats[id] = !this.expandedNodeStats[id];
 
       $(document.getElementById('statsGraph-' + id)).empty();
 
-      if (!this.expanded[id]) {return;}
+      if (!this.expandedNodeStats[id]) {return;}
 
       var dcontext = cubism.context()
          .serverDelay(0)
@@ -287,17 +347,18 @@
       function dmetric(name, mname) {
         return dcontext.metric(function(startV, stopV, stepV, callback) {
           self.StatsService.getDetailStats({nodeName: stat.id,
-            start: startV/1000,
-            stop: stopV/1000,
-            step: stepV/1000,
-            interval: 60,
-            name: mname})
+                                            start: startV/1000,
+                                            stop: stopV/1000,
+                                            step: stepV/1000,
+                                            interval: 60,
+                                            name: mname})
              .then((response)  => {
                callback(null, response);
              })
              .catch((error)    => { return callback(new Error('Unable to load data')); });
         }, name);
       }
+
       var headerNames = this.columns.map(function(item) {return item.name;});
       var dataSrcs = this.columns.map(function(item) {return item.sort;});
       var metrics = [];
@@ -334,12 +395,12 @@
   }
 
 
-  StatsController.$inject = ['$scope','$interval','$routeParams',
+  StatsController.$inject = ['$scope','$interval','$location','$routeParams',
     'StatsService','UserService'];
 
   /**
    * Moloch Stats Directive
-   * Displays pcap stats
+   * Displays node stats
    */
   angular.module('moloch')
      .component('molochStats', {
