@@ -2,8 +2,6 @@
 
   'use strict';
 
-  let fakeWindow = { location: { href: '' } };
-
   describe('Navbar Directive ->', function() {
 
     // load the module
@@ -33,7 +31,6 @@
 
       navbar = $componentController('navbar', {
         $location     : $location,
-        $window       : fakeWindow,
         molochVersion : molochVersion
       });
 
@@ -50,7 +47,6 @@
     it('should exist and have dependencies', function() {
       expect(navbar).toBeDefined();
       expect(navbar.$location).toBeDefined();
-      expect(navbar.$window).toBeDefined();
       expect(navbar.molochVersion).toBeDefined();
     });
 
@@ -80,10 +76,10 @@
     it('should add #settings to the url', function() {
       // navigating from the settings page to the help page should append
       // #settings to the url
-      navbar.$location.path('/settings');
+      navbar.activeTab = 'settings';
       navbar.navTabClick('help');
 
-      expect(fakeWindow.location.href.contains('#settings')).toBeTruthy();
+      expect(navbar.$location.hash()).toEqual('settings');
     });
 
   });

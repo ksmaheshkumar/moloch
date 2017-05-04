@@ -105,7 +105,9 @@
 
     /* fired when controller's containing scope is destroyed */
     $onDestroy() {
-      d3.select(window).off('resize', this.resize);
+      // d3 doesn't have .off function to remove listeners
+      // http://stackoverflow.com/questions/20269384/how-do-you-remove-a-handler-using-a-d3-js-selector
+      d3.select(window).on('resize', null);
     }
 
     /* sets up d3 graph and saves variables for use in other functions */

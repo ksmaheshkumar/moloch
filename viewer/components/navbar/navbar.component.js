@@ -14,19 +14,19 @@
      * Initialize global variables for this controller
      * @param $location     Exposes browser address bar URL
      *                      (based on the window.location)
-     * @param $window       Angular reference to the browser's window object
      * @param molochVersion The installed version of moloch
      *
      * @ngInject
      */
-    constructor($location, $window, molochVersion) {
+    constructor($location, molochVersion) {
       this.$location      = $location;
-      this.$window        = $window;
       this.molochVersion  = molochVersion.version;
     }
 
     /* Callback when component is mounted and ready */
     $onInit() {
+      this.activeTab = this.$location.path().split('/')[1];
+
       this.menu = {
         sessions    : { title: 'Sessions',    link: 'sessions' },
         spiview     : { title: 'SPI View',    link: 'spiview' },
@@ -43,11 +43,11 @@
 
     /* exposed functions --------------------------------------------------- */
     /**
-     * Determines the active nav item based on the page route
+     * Determines whether a tab is active based on it's link
      * @param {string} route The route of the nav item
      */
-    isActive(route) {
-      return route === this.$location.path().split('/')[1];
+    isActive(link) {
+      return this.activeTab === link;
     }
 
     /**
@@ -55,22 +55,19 @@
      * @param {string} link The link to redirect to
      */
     navTabClick(link) {
-      let path = this.$location.path();
-
-      let basePath = path.split('/')[1];
-      if (this.menu[basePath] && link.contains('help')) {
+      if (link === 'help') {
         // going to help page, so set section of help to navigate to
-        this.$location.hash(basePath);
-      } else {
-        this.$location.hash(null);
+        this.$location.hash(this.activeTab);
       }
 
-      this.$window.location.href = this.$location.url().replace(path, link);
+      this.activeTab = link;
+
+      this.$location.path(link);
     }
 
   }
 
-  NavbarController.$inject = ['$location','$window','molochVersion'];
+  NavbarController.$inject = ['$location','molochVersion'];
 
   /**
    * Navbar Directive

@@ -91,15 +91,19 @@
           reloadOnSearch: false
         })
         .when('/connections', {
-          title    : 'Connections',
-          template : '<moloch-connections></moloch-connections>',
+          title         : 'Connections',
+          template      : '<moloch-connections></moloch-connections>',
           reloadOnSearch: false
         })
         .when('/spigraph', {
-          title    : 'SPIGraph',
-          template : '<moloch-spigraph></moloch-spigraph>',
+          title         : 'SPIGraph',
+          template      : '<moloch-spigraph></moloch-spigraph>',
           reloadOnSearch: false
-        });
+        })
+         .otherwise({
+           title    : 'Not Found',
+           template : '<moloch-404></moloch-404>'
+         });
 
       $locationProvider.html5Mode(true); // activate HTML5 Mode
 
