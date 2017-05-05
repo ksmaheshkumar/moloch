@@ -12,15 +12,16 @@
 
     /**
      * Initialize global variables for this controller
-     * @param $location     Exposes browser address bar URL
-     *                      (based on the window.location)
-     * @param molochVersion The installed version of moloch
+     * @param $location Exposes browser address bar URL
+     *                  (based on the window.location)
+     * @param Constants Moloch UI global constants
      *
      * @ngInject
      */
-    constructor($location, molochVersion) {
+    constructor($location, Constants) {
       this.$location      = $location;
-      this.molochVersion  = molochVersion.version;
+      this.molochVersion  = Constants.version;
+      this.demoMode       = Constants.demoMode;
     }
 
     /* Callback when component is mounted and ready */
@@ -34,10 +35,13 @@
         connections : { title: 'Connections', link: 'connections' },
         files       : { title: 'Files',       link: 'files' },
         stats       : { title: 'Stats',       link: 'stats' },
-        settings    : { title: 'Settings',    link: 'settings' },
-        users       : { title: 'Users',       link: 'users', permission: 'createEnabled' },
         upload      : { title: 'Upload',      link: 'upload', permission: 'canUpload' }
       };
+
+      if (!this.demoMode) {
+        this.menu.settings  = { title: 'Settings', link: 'settings' };
+        this.menu.users     = { title: 'Users', link: 'users', permission: 'createEnabled' };
+      }
     }
 
 
@@ -67,7 +71,7 @@
 
   }
 
-  NavbarController.$inject = ['$location','molochVersion'];
+  NavbarController.$inject = ['$location','Constants'];
 
   /**
    * Navbar Directive

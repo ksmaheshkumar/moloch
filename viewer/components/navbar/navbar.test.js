@@ -17,7 +17,7 @@
       $location,
       $rootScope,
       $compile,
-      molochVersion) {
+      Constants) {
 
       $httpBackend = _$httpBackend_;
 
@@ -30,8 +30,8 @@
       let template  = $compile(element)(scope);
 
       navbar = $componentController('navbar', {
-        $location     : $location,
-        molochVersion : molochVersion
+        $location: $location,
+        Constants: Constants
       });
 
       scope.$digest();
@@ -48,6 +48,7 @@
       expect(navbar).toBeDefined();
       expect(navbar.$location).toBeDefined();
       expect(navbar.molochVersion).toBeDefined();
+      expect(navbar.demoMode).toBeDefined();
     });
 
     it('should render html with menu items', function() {

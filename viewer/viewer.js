@@ -713,7 +713,6 @@ function checkWebEnabled(req, res, next) {
 //////////////////////////////////////////////////////////////////////////////////
 //// Pages
 //////////////////////////////////////////////////////////////////////////////////
-
 // APIs disabled in demoMode, needs to be before real callbacks
 if (Config.get('demoMode', false)) {
   console.log("WARNING - Starting in demo mode, some APIs disabled");
@@ -5843,7 +5842,12 @@ app.use(function (req, res) {
   var theme = req.user.settings.theme || 'default-theme';
   if (theme.startsWith('custom1')) { theme  = 'custom-theme'; }
 
-  res.render('app.pug', { theme:theme });
+  res.render('app.pug', {
+    theme   : theme,
+    demoMode: Config.get('demoMode', false),
+    devMode : Config.get('devMode', false),
+    version : app.locals.molochversion
+  });
 });
 
 
