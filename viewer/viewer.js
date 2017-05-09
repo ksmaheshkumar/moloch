@@ -773,6 +773,15 @@ function sessionsOld (req, res) {
   });
 }
 
+app.get(['/', '/app'], function(req, res) {
+  var question = req.url.indexOf("?");
+  if (question === -1) {
+    res.redirect("sessions");
+  } else {
+    res.redirect("sessions" + req.url.substring(question));
+  }
+});
+
 app.get("/sessions.old", checkWebEnabled, sessionsOld);
 
 app.get("/spiview.old", checkWebEnabled, function(req, res) {
