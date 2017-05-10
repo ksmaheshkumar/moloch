@@ -68,8 +68,9 @@
           template : '<moloch-help></moloch-help>'
         })
         .when('/settings', {
-          title    : 'Settings',
-          template : '<moloch-settings></moloch-settings>'
+          title         : 'Settings',
+          template      : '<moloch-settings></moloch-settings>',
+          reloadOnSearch: false
         })
         .when('/files', {
           title         : 'Files',
