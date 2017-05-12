@@ -50,40 +50,8 @@
         this.actionFormItemRadio = 'matching';
       }
 
-      if (this.$routeParams.date) { // time range is available
-        this.timeRange = this.$routeParams.date;
-        if (this.timeRange === '-1') { // all time
-          this.startTime  = hourMS * 5;
-          this.stopTime   = currentTime;
-        }
-        this.$location.search('stopTime', null);
-        this.$location.search('startTime', null);
-      } else if(this.$routeParams.startTime && this.$routeParams.stopTime) {
-        // start and stop times available
-        let stop  = parseInt(this.$routeParams.stopTime * 1000, 10);
-        let start = parseInt(this.$routeParams.startTime * 1000, 10);
-        if (stop && start && !isNaN(stop) && !isNaN(start)) {
-          // if we can parse start and stop time, set them
-          this.timeRange  = '0'; // custom time range
-          this.stopTime   = stop;
-          this.startTime  = start;
-          if (stop < start) {
-            this.timeError = 'Stop time cannot be before start time';
-          }
-          // update the displayed time range
-          this.deltaTime = this.stopTime - this.startTime;
-        } else { // if we can't parse stop or start time, set default
-          this.timeRange = '1'; // default to 1 hour
-          this.$location.search('date', this.timeRange);
-          this.$location.search('stopTime', null);
-          this.$location.search('startTime', null);
-        }
-      } else if (!this.$routeParams.date &&
-          !this.$routeParams.startTime && !this.$routeParams.stopTime) {
-        // there are no time query parameters, so set defaults
-        this.timeRange = '1'; // default to 1 hour
-        this.$location.search('date', this.timeRange); // update url params
-      }
+      this.setupTimeParams(this.$routeParams.date, this.$routeParams.startTime,
+        this.$routeParams.stopTime, true);
 
       // load routeParameter expression on initialization
       if (!initialized && this.$routeParams.expression) {
@@ -136,6 +104,89 @@
       this.$scope.$on('update:views', (event, args) => {
         if (args.views) { this.views = args.views; }
       });
+
+      // TODO document
+      // watch for the url parameters to change and update the page
+      // date, startTime, stopTime, expression, bounding, and view parameters
+      // are managed by the search component
+      this.$scope.$on('$routeUpdate', (event, current) => {
+        let doUpdate = false;
+
+        if (current.params.expression !== this.$rootScope.expression) {
+          this.$rootScope.expression = current.params.expression;
+          doUpdate = true;
+        }
+        if (current.params.bounding !== this.timeBounding) {
+          this.timeBounding = current.params.bounding || 'last';
+          doUpdate = true;
+        }
+        if (current.params.view !== this.view) {
+          this.view = current.params.view;
+          doUpdate = true;
+        }
+
+        let timeUpdated = this.setupTimeParams(current.params.date,
+           current.params.startTime, current.params.stopTime);
+
+        doUpdate = doUpdate || timeUpdated;
+
+        if (doUpdate) { this.change(); }
+      });
+    }
+
+    // TODO document
+    setupTimeParams(date, startTime, stopTime, updateUrlParams) {
+      let doUpdate = false;
+
+      if (date) { // time range is available
+        this.timeRange = date;
+        if (this.timeRange === '-1') { // all time
+          this.startTime  = hourMS * 5;
+          this.stopTime   = currentTime;
+        }
+
+        if (updateUrlParams) {
+          this.$location.search('stopTime', null);
+          this.$location.search('startTime', null);
+        }
+
+        doUpdate = true;
+      } else if(startTime && stopTime) {
+        // start and stop times available
+        let stop  = parseInt(stopTime * 1000, 10);
+        let start = parseInt(startTime * 1000, 10);
+        if (stop && start && !isNaN(stop) && !isNaN(start)) {
+          // if we can parse start and stop time, set them
+          this.timeRange  = '0'; // custom time range
+          this.stopTime   = stop;
+          this.startTime  = start;
+          if (stop < start) {
+            this.timeError = 'Stop time cannot be before start time';
+          }
+          // update the displayed time range
+          this.deltaTime = this.stopTime - this.startTime;
+        } else { // if we can't parse stop or start time, set default
+          this.timeRange = '1'; // default to 1 hour
+
+          if (updateUrlParams) {
+            this.$location.search('date', this.timeRange);
+            this.$location.search('stopTime', null);
+            this.$location.search('startTime', null);
+          }
+        }
+
+        doUpdate = true;
+      } else if (!date && !startTime && !stopTime) {
+        // there are no time query parameters, so set defaults
+        this.timeRange = '1'; // default to 1 hour
+        doUpdate = true;
+
+        if (updateUrlParams) {
+          this.$location.search('date', this.timeRange); // update url params
+        }
+      }
+
+      return doUpdate;
     }
 
 

@@ -76,12 +76,18 @@
       // watch for pagination changes (from pagination.component)
       this.$scope.$on('change:pagination', (event, args) => {
         // pagination affects length, currentPage, and start
-        _query.length = this.query.length = args.length;
-        _query.start  = this.query.start  = args.start;
+        // only update vars and get data if something has changed
+        // this can be fired twice because there are 2 pagination controls
+        if (this.query.length !== args.length ||
+            this.query.start !== args.start ||
+            this.currentPage !== args.currentPage) {
+          _query.length = this.query.length = args.length;
+          _query.start  = this.query.start  = args.start;
 
-        this.currentPage = args.currentPage;
+          this.currentPage = args.currentPage;
 
-        this.getData();
+          this.getData();
+        }
       });
 
       // watch for search expression and date range changes
