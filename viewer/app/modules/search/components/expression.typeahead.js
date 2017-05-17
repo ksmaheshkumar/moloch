@@ -301,6 +301,8 @@
      * @param {Object} event The keydown event fired by the input
      */
     keydown(event) {
+      event.stopPropagation();
+
       let target;
 
       // always check for escape before anything else

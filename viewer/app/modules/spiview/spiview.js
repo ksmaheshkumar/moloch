@@ -114,6 +114,34 @@
         // notify children (namely search component)
         this.$scope.$broadcast('update:time', args);
       });
+
+      this.$scope.$on('$routeUpdate', (event, current) => {
+        console.log('$routeUpdate in spiview'); // TODO remove
+
+        // TODO if a spi field has been removed, remove it from the view
+        if (current.params.spi && current.params.spi !== this.query.spi) {
+          this.query.spi = current.params.spi;
+
+          newQuery = true;
+
+          // this.categoryObjects[field.group].spi
+          let spiParamsArray = this.query.spi.split(',');
+          // for (let i = 0, len = spiParamsArray.length; i < len; ++i)
+          // go through existing fields and remove the ones that are not in the new query.spi
+          // for (let key in this.categoryObjects) {
+          //
+          // }
+
+          if (pendingPromise) {   // if there's already a req (or series of reqs)
+            this.cancelLoading(); // cancel any current requests
+            timeout = this.$timeout(() => { // wait for promise abort to complete
+              this.getFields();
+            }, 100);
+          } else {
+            this.getFields();
+          }
+        }
+      });
     }
 
     /* fired when controller's containing scope is destroyed */

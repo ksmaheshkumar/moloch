@@ -110,13 +110,15 @@
       // date, startTime, stopTime, expression, bounding, and view parameters
       // are managed by the search component
       this.$scope.$on('$routeUpdate', (event, current) => {
+        console.log('$routeUpdate in search'); // TODO remove
+
         let doUpdate = false;
 
         if (current.params.expression !== this.$rootScope.expression) {
           this.$rootScope.expression = current.params.expression;
           doUpdate = true;
         }
-        if (current.params.bounding !== this.timeBounding) {
+        if (current.params.bounding && current.params.bounding !== this.timeBounding) {
           this.timeBounding = current.params.bounding || 'last';
           doUpdate = true;
         }
@@ -139,6 +141,8 @@
       let doUpdate = false;
 
       if (date) { // time range is available
+        if (this.timeRange !== date) { doUpdate = true; }
+
         this.timeRange = date;
         if (this.timeRange === '-1') { // all time
           this.startTime  = hourMS * 5;
@@ -149,12 +153,13 @@
           this.$location.search('stopTime', null);
           this.$location.search('startTime', null);
         }
-
-        doUpdate = true;
       } else if(startTime && stopTime) {
         // start and stop times available
         let stop  = parseInt(stopTime * 1000, 10);
         let start = parseInt(startTime * 1000, 10);
+
+        if (stop !== this.stopTime || start !== this.startTime) { doUpdate = true; }
+
         if (stop && start && !isNaN(stop) && !isNaN(start)) {
           // if we can parse start and stop time, set them
           this.timeRange  = '0'; // custom time range
@@ -174,12 +179,11 @@
             this.$location.search('startTime', null);
           }
         }
-
-        doUpdate = true;
       } else if (!date && !startTime && !stopTime) {
         // there are no time query parameters, so set defaults
+        if (this.timeRanage !== '1') { doUpdate = true; }
+
         this.timeRange = '1'; // default to 1 hour
-        doUpdate = true;
 
         if (updateUrlParams) {
           this.$location.search('date', this.timeRange); // update url params
@@ -357,7 +361,7 @@
 
         this.$rootScope.$broadcast('issue:search', {
           expression: this.$rootScope.expression,
-          view      : this.view
+          view: this.view
         });
       }
     }

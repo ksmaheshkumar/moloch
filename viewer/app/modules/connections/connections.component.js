@@ -46,8 +46,6 @@
 
     /* Callback when component is mounted and ready */
     $onInit() {
-      this.loading = true;
-
       this.UserService.getSettings()
         .then((response) => {
           this.settings = response;
@@ -94,7 +92,8 @@
         _query.expression = args.expression;
         if (args.bounding) {_query.bounding = args.bounding;}
 
-        this.loadData();
+        // don't load data if it's already loading
+        if (!this.loading) { this.loadData(false); }
       });
 
       networkLabelElem = $('#networkLabel');
@@ -205,7 +204,7 @@
 
     /* removes existing nodes, update url parameters and retrieves data from
      * the connections service */
-    loadData() {
+    loadData(updateParams) {
       this.loading  = true;
       this.error    = false;
 
@@ -214,21 +213,19 @@
       this.svg.selectAll('.link').remove();
       this.svg.selectAll('.node').remove();
 
-      // build new query and save values in url parameters
       _query.length   = this.querySize;
-      this.$location.search('connLength', this.querySize);
-
       _query.srcField = this.srcField;
-      this.$location.search('srcField', this.srcField);
-
       _query.dstField = this.dstField;
-      this.$location.search('dstField', this.dstField);
-
-      _query.minConn  = this.minConn;
-      this.$location.search('minConn', this.minConn);
-
       _query.nodeDist = this.nodeDist;
-      this.$location.search('nodeDist', this.nodeDist);
+      _query.minConn  = this.minConn;
+
+      if (updateParams) { // save values in url parameters
+        this.$location.search('connLength', this.querySize);
+        this.$location.search('srcField', this.srcField);
+        this.$location.search('dstField', this.dstField);
+        this.$location.search('nodeDist', this.nodeDist);
+        this.$location.search('minConn', this.minConn);
+      }
 
       this.ConnectionsService.get(_query)
         .then((response) => {
