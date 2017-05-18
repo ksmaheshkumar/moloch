@@ -105,44 +105,38 @@
         if (args.views) { this.views = args.views; }
       });
 
-      // TODO document
       // watch for the url parameters to change and update the page
       // date, startTime, stopTime, expression, bounding, and view parameters
       // are managed by the search component
       this.$scope.$on('$routeUpdate', (event, current) => {
-        console.log('$routeUpdate in search'); // TODO remove
-
-        let doUpdate = false;
+        console.log('$routeUpdate in search'); // TODO REMOVE
 
         if (current.params.expression !== this.$rootScope.expression) {
           this.$rootScope.expression = current.params.expression;
-          doUpdate = true;
         }
         if (current.params.bounding && current.params.bounding !== this.timeBounding) {
           this.timeBounding = current.params.bounding || 'last';
-          doUpdate = true;
         }
         if (current.params.view !== this.view) {
           this.view = current.params.view;
-          doUpdate = true;
         }
 
-        let timeUpdated = this.setupTimeParams(current.params.date,
-           current.params.startTime, current.params.stopTime);
+        this.setupTimeParams(current.params.date, current.params.startTime,
+                              current.params.stopTime);
 
-        doUpdate = doUpdate || timeUpdated;
-
-        if (doUpdate) { this.change(); }
+        this.change();
       });
     }
 
-    // TODO document
+    /**
+     * Sets up time query parameters and updates the url if necessary
+     * @param {string} date           The time range to query within
+     * @param {string} startTime      The start time for a custom time range
+     * @param {string} stopTime       The stop time for a custom time range
+     * @param {bool} updateUrlParams  Whether to update the url parameters
+     */
     setupTimeParams(date, startTime, stopTime, updateUrlParams) {
-      let doUpdate = false;
-
       if (date) { // time range is available
-        if (this.timeRange !== date) { doUpdate = true; }
-
         this.timeRange = date;
         if (this.timeRange === '-1') { // all time
           this.startTime  = hourMS * 5;
@@ -157,8 +151,6 @@
         // start and stop times available
         let stop  = parseInt(stopTime * 1000, 10);
         let start = parseInt(startTime * 1000, 10);
-
-        if (stop !== this.stopTime || start !== this.startTime) { doUpdate = true; }
 
         if (stop && start && !isNaN(stop) && !isNaN(start)) {
           // if we can parse start and stop time, set them
@@ -181,22 +173,19 @@
         }
       } else if (!date && !startTime && !stopTime) {
         // there are no time query parameters, so set defaults
-        if (this.timeRanage !== '1') { doUpdate = true; }
-
         this.timeRange = '1'; // default to 1 hour
 
         if (updateUrlParams) {
           this.$location.search('date', this.timeRange); // update url params
         }
       }
-
-      return doUpdate;
     }
 
 
     /* exposed functions --------------------------------------------------- */
     /**
      * Fired when the time range value changes
+     * Updating the url parameter triggers $routeUpdate which triggers change()
      */
     changeTimeRange() {
       this.timeError = false;
@@ -204,12 +193,11 @@
       this.$location.search('date', this.timeRange);
       this.$location.search('stopTime', null);
       this.$location.search('startTime', null);
-
-      this.change();
     }
 
     /**
-     * Fired when a date value is changed
+     * Validates a date and updates delta time (stop time - start time)
+     * Fired when a date value is changed (with 500 ms delay)
      * @param {bool} loadData Whether to issue query after updating time
      */
      changeDate(loadData) {
@@ -232,15 +220,23 @@
        // update the displayed time range
        this.deltaTime = this.stopTime - this.startTime;
 
-       this.$location.search('date', null);
-       this.$location.search('stopTime', stopSec);
-       this.$location.search('startTime', startSec);
-
-       if (loadData) { this.change(); }
+      if (loadData) { this.applyDate(); }
      }
+
+    /**
+     * Fired when search button or enter is clicked
+     * Updates the date, stopTime, and startTime url parameters
+     */
+    applyDate() {
+      this.$location.search('date', null);
+      this.$location.search('stopTime', parseInt((this.stopTime / 1000).toFixed()));
+      this.$location.search('startTime', parseInt((this.startTime / 1000).toFixed()));
+    }
 
      /**
       * Fired when change bounded checkbox is (un)checked
+      * Applies the timeBounding url parameter
+      * Updating the url parameter triggers $routeUpdate which triggers change()
       */
      changeTimeBounding() {
        if (this.timeBounding !== 'last') {
@@ -248,8 +244,6 @@
        } else {
          this.$location.search('bounding', null);
        }
-
-       this.change();
      }
 
     /**
@@ -314,19 +308,37 @@
     }
 
     /**
-     * Fired when a search control value is changed
-     * (startTime, stopTime, timeRange, expression, bounding)
+     * Fired when search button or enter is clicked
+     * Updates the expression url parameter
      */
-    change() {
-      let useDateRange = false;
-
-      // update the parameters with the expression
+    applyExpression() {
+      // TODO check for undefined expression url parameter?
       if (this.$rootScope.expression && this.$rootScope.expression !== '') {
         this.$location.search('expression', this.$rootScope.expression);
       } else {
         this.$location.search('expression', null);
       }
+    }
 
+    /**
+     * Fired when the search button or enter is clicked
+     * Updates the expression, date, startTime, and stopTime url parameters
+     */
+    applyParams() {
+      this.applyExpression();
+      if (parseInt(this.timeRange) === 0) { this.applyDate(); }
+    }
+
+    /**
+     * Fired when the url parameters for search have changed
+     * (date, startTime, stopTime, expression, bounding, view)
+     */
+    change() {
+      console.log('change function in search'); // TODO REMOVE
+
+      let useDateRange = false, fireEvents = true;
+
+      // build the parameters to send to the parent controller that makes the req
       if (this.timeRange > 0) {
         // if it's not a custom time range or all, update the time
         currentTime = new Date().getTime();
@@ -358,10 +370,9 @@
         }
 
         this.$scope.$emit('change:search', args);
-
         this.$rootScope.$broadcast('issue:search', {
           expression: this.$rootScope.expression,
-          view: this.view
+          view      : this.view
         });
       }
     }

@@ -129,7 +129,7 @@
       function changeDate(stopTime, startTime) {
         search.stopTime   = stopTime;
         search.startTime  = startTime;
-        search.changeDate();
+        search.changeDate(true);
 
         expect(scope.$emit).toHaveBeenCalled();
         expect(search.$location.search).toHaveBeenCalledWith('startTime', parseInt((startTime/1000).toFixed()));
