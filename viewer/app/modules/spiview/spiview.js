@@ -116,21 +116,14 @@
       });
 
       this.$scope.$on('$routeUpdate', (event, current) => {
-        console.log('$routeUpdate in spiview'); // TODO remove
-
-        // TODO if a spi field has been removed, remove it from the view
         if (current.params.spi && current.params.spi !== this.query.spi) {
           this.query.spi = current.params.spi;
 
           newQuery = true;
+          openedCategories = false;
+          categoryLoadingCounts = {};
 
-          // this.categoryObjects[field.group].spi
-          let spiParamsArray = this.query.spi.split(',');
-          // for (let i = 0, len = spiParamsArray.length; i < len; ++i)
-          // go through existing fields and remove the ones that are not in the new query.spi
-          // for (let key in this.categoryObjects) {
-          //
-          // }
+          this.deactivateSpiData(); // hide any removed fields from spi url param
 
           if (pendingPromise) {   // if there's already a req (or series of reqs)
             this.cancelLoading(); // cancel any current requests
@@ -489,6 +482,30 @@
             category.protocols[key] = this.protocols[key];
           }
 
+        }
+      }
+    }
+
+    /* deactiveate spi data that is no longer in url params */
+    deactivateSpiData() {
+      let spiParamsArray = this.query.spi.split(',');
+      for (let key in this.categoryObjects) {
+        if (this.categoryObjects.hasOwnProperty(key)) {
+          let category = this.categoryObjects[key];
+          for (let k in category.spi) {
+            if (category.spi.hasOwnProperty(k)) {
+              let spiData = category.spi[k];
+              if (spiData.active) {
+                let inactive = true;
+                for (let i = 0, len = spiParamsArray.length; i < len; ++i) {
+                  // if it exists in spi url param, it's still active
+                  if (spiParamsArray[i] === k) { inactive = false; }
+                }
+                // it's no longer in the spi url param, so it's not active
+                if (inactive) { spiData.active = false; }
+              }
+            }
+          }
         }
       }
     }
