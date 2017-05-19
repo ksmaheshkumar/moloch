@@ -93,8 +93,6 @@
       // watch for search expression and date range changes
       // (from search.component)
       this.$scope.$on('change:search', (event, args) => {
-        console.log('change:search event in session.list'); // TODO REMOVE
-
         // either (startTime && stopTime) || date
         if (args.startTime && args.stopTime) {
           _query.startTime  = this.query.startTime  = args.startTime;

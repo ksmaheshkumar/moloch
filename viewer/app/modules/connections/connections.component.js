@@ -64,11 +64,11 @@
         .catch((error) => { this.settings = { timezone: 'local' }; });
 
       // load route params
-      this.querySize  = _query.querySize  = this.$routeParams.connLength || 100;
-      this.srcField   = _query.srcField   = this.$routeParams.srcField || 'a1';
-      this.dstField   = _query.srcField   = this.$routeParams.dstField || 'a2';
-      this.nodeDist   = _query.nodeDist   = parseInt(this.$routeParams.nodeDist || '125');
-      this.minConn    = _query.minConn    = parseInt(this.$routeParams.minConn || '1');
+      this.querySize  = _query.length   = this.$routeParams.connLength || 100;
+      this.srcField   = _query.srcField = this.$routeParams.srcField || 'a1';
+      this.dstField   = _query.srcField = this.$routeParams.dstField || 'a2';
+      this.nodeDist   = _query.nodeDist = parseInt(this.$routeParams.nodeDist || '125');
+      this.minConn    = _query.minConn  = parseInt(this.$routeParams.minConn || '1');
 
       let styles = window.getComputedStyle(document.body);
       this.primaryColor   = styles.getPropertyValue('--color-primary').trim();
@@ -78,6 +78,12 @@
 
       this.startD3();
 
+      networkLabelElem = $('#networkLabel');
+
+      // hide the footer so that there is more space for the graph
+      $('footer').hide();
+
+      /* LISTEN! */
       this.$scope.$on('change:search', (event, args) => {
         if (args.startTime && args.stopTime) {
           _query.startTime  = args.startTime;
@@ -93,13 +99,47 @@
         if (args.bounding) {_query.bounding = args.bounding;}
 
         // don't load data if it's already loading
-        if (!this.loading) { this.loadData(false); }
+        if (!this.loading) { this.loadData(); }
       });
 
-      networkLabelElem = $('#networkLabel');
+      // watch for the url parameters to change and update the page
+      // connLength, srcField, dstField, minConn, and nodeDist parameters
+      // are managed by the connections component
+      this.$scope.$on('$routeUpdate', (event, current) => {
+        let change = false;
 
-      // hide the footer so that there is more space for the graph
-      $('footer').hide();
+        let size = current.params.connLength || 100;
+        if (size !== this.querySize) {
+          change = true;
+          this.querySize = _query.length = size;
+        }
+
+        let srcField = current.params.srcField || 'a1';
+        if (srcField !== this.srcField) {
+          change = true;
+          this.srcField = _query.srcField = srcField;
+        }
+
+        let dstField = current.params.dstField || 'a2';
+        if (dstField !== this.dstField) {
+          change = true;
+          this.dstField = _query.dstField = dstField;
+        }
+
+        let nodeDist = current.params.nodeDist || 125;
+        if (nodeDist !== this.nodeDist) {
+          this.nodeDist = _query.nodeDist = nodeDist;
+          force.distance(this.nodeDist).start();
+        }
+
+        let minConn = current.params.minConn || 1;
+        if (minConn !== this.minConn) {
+          change = true;
+          this.minConn = _query.minConn = minConn;
+        }
+
+        if (change) { this.loadData(); }
+      });
     }
 
     /* fired when controller's containing scope is destroyed */
@@ -204,7 +244,7 @@
 
     /* removes existing nodes, update url parameters and retrieves data from
      * the connections service */
-    loadData(updateParams) {
+    loadData() {
       this.loading  = true;
       this.error    = false;
 
@@ -213,19 +253,13 @@
       this.svg.selectAll('.link').remove();
       this.svg.selectAll('.node').remove();
 
+      // TODO remove _query (we aren't using it), instead set this.query[param]
+      // make sure query parameters are updated
       _query.length   = this.querySize;
       _query.srcField = this.srcField;
       _query.dstField = this.dstField;
       _query.nodeDist = this.nodeDist;
       _query.minConn  = this.minConn;
-
-      if (updateParams) { // save values in url parameters
-        this.$location.search('connLength', this.querySize);
-        this.$location.search('srcField', this.srcField);
-        this.$location.search('dstField', this.dstField);
-        this.$location.search('nodeDist', this.nodeDist);
-        this.$location.search('minConn', this.minConn);
-      }
 
       this.ConnectionsService.get(_query)
         .then((response) => {
@@ -237,6 +271,26 @@
           this.loading  = false;
           this.error    = error.text;
         });
+    }
+
+    changeQuerySize() {
+      this.$location.search('connLength', this.querySize);
+      this.loadData();
+    }
+
+    changeSrcField() {
+      this.$location.search('srcField', this.srcField);
+      this.loadData();
+    }
+
+    changeDstField() {
+      this.$location.search('dstField', this.dstField);
+      this.loadData();
+    }
+
+    changeMinConn() {
+      this.$location.search('minConn', this.minConn);
+      this.loadData();
     }
 
     /* changes distance between the nodes and saves it in a url parameter */

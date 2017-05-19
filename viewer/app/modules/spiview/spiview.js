@@ -2,10 +2,12 @@
 
   'use strict';
 
+  const defaultSpi = 'a2:100,prot-term:100,a1:100';
+
   // local variable to save query state
   let _query = {  // set query defaults:
     facets: 1,    // facets
-    spi   : 'a2:100,prot-term:100,a1:100' // which spi data values to query for
+    spi   : defaultSpi // which spi data values to query for
   };
 
   let newQuery = true, openedCategories = false;
@@ -63,8 +65,6 @@
       if (this.$routeParams.spi) {
         // if there's a spi param use it
         this.query.spi = _query.spi = this.$routeParams.spi;
-      } else { // if there isn't, set it for future use
-        this.$location.search('spi', this.query.spi);
       }
 
       this.getFields(); // IMPORTANT: kicks off initial query for spi data!
@@ -116,8 +116,10 @@
       });
 
       this.$scope.$on('$routeUpdate', (event, current) => {
-        if (current.params.spi && current.params.spi !== this.query.spi) {
-          this.query.spi = current.params.spi;
+        let spiParams = current.params.spi || defaultSpi;
+
+        if (spiParams !== this.query.spi) {
+          this.query.spi = spiParams;
 
           newQuery = true;
           openedCategories = false;
@@ -128,10 +130,10 @@
           if (pendingPromise) {   // if there's already a req (or series of reqs)
             this.cancelLoading(); // cancel any current requests
             timeout = this.$timeout(() => { // wait for promise abort to complete
-              this.getFields();
+              this.getSpiData(this.query.spi);
             }, 100);
           } else {
-            this.getFields();
+            this.getSpiData(this.query.spi);
           }
         }
       });
@@ -486,7 +488,7 @@
       }
     }
 
-    /* deactiveate spi data that is no longer in url params */
+    /* deactivate spi data that is no longer in url params */
     deactivateSpiData() {
       let spiParamsArray = this.query.spi.split(',');
       for (let key in this.categoryObjects) {

@@ -14,7 +14,7 @@
             Query Size
           </span>
           <select class="form-control" convert-to-number
-            ng-change="$ctrl.loadData(true)"
+            ng-change="$ctrl.changeQuerySize()"
             ng-model="$ctrl.querySize">
             <option value="100">100</option>
             <option value="500">500</option>
@@ -40,7 +40,7 @@
             <input type="text" ng-model="$ctrl.srcField"
               class="form-control field-typeahead"
               typeahead-min-length="0"
-              typeahead-on-select="$ctrl.loadData(true)"
+              typeahead-on-select="$ctrl.changeSrcField()"
               typeahead-input-formatter="$ctrl.formatField($model)"
               uib-typeahead="field.dbField as field.exp for field in $ctrl.fields | filter:{exp:$viewValue}">
           </div>
@@ -58,7 +58,7 @@
             <input type="text" ng-model="$ctrl.dstField"
               class="form-control field-typeahead"
               typeahead-min-length="0"
-              typeahead-on-select="$ctrl.loadData(true)"
+              typeahead-on-select="$ctrl.changeDstField()"
               typeahead-input-formatter="$ctrl.formatField($model)"
               uib-typeahead="field.dbField as field.exp for field in $ctrl.fields | filter:{exp:$viewValue}">
           </div>
@@ -87,7 +87,7 @@
             Min. Connections
           </span>
           <select class="form-control" convert-to-number
-            ng-change="$ctrl.loadData(true)"
+            ng-change="$ctrl.changeMinConn()"
             ng-model="$ctrl.minConn">
             <option value="1">1</option>
             <option value="2">2</option>
